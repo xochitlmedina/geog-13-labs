@@ -1,0 +1,157 @@
+---
+title: "Geography 13"
+author: "[Xochitl Medina](https://xochitlmedina.github.io)"
+subtitle: 'Lab 02: COVID-19 Pandemic'
+output:
+  html_document:
+    theme: journal
+---
+
+# data
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(zoo)
+library(knitr)
+library(readxl)
+url = 'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'
+covid = read_csv(url)
+library(tidyverse)
+
+landdata = read_csv("../data/landdata-states.csv")
+popEst = read_excel ("../data/PopulationEstimates.xls",
+skip=2)
+```
+
+# Question 1 
+
+## Table 1
+```{r}
+library(tidyverse)
+library(dplyr)
+state.interest = "California"
+covid %>% filter (state == state.interest) %>%
+   filter(date == max(date)) %>%
+arrange(-cases) %>%
+  slice(1:5)
+```
+## Table 2
+
+```{r}
+library(tidyverse)
+library(dplyr)
+state.interest = "California"
+covid %>% filter (state == state.interest) %>%
+group_by(county)  %>% mutate(newcases = cases-lag(cases))  %>%
+  ungroup() %>%
+  filter(date == max(date)) %>%
+arrange(-newcases) %>%
+  slice(1:5)
+ 
+```
+
+## Table Join
+```{r}
+library(readxl)
+PopulationEstimates <- read_excel("../data/PopulationEstimates.xls", skip=2)
+PopEstimates = 
+PopulationEstimates %>%
+
+rename(fips = FIPStxt)
+  
+CovidPop = inner_join(covid, PopEstimates, by = "fips")
+
+```
+## Cases Per Capita
+``` {r} 
+library(tidyverse)
+library(dplyr)
+state.interest = "California"
+CovidPop %>% filter (state == state.interest) %>%
+   filter(date == max(date)) %>%
+  mutate(percapita = cases/POP_ESTIMATE_2019) %>%
+arrange(-percapita) %>%
+  slice(1:5)
+```
+## Newest Cases Per Capita
+```{r}
+library(tidyverse)
+library(dplyr)
+state.interest = "California"
+CovidPop %>% filter (state == state.interest) %>%
+group_by(county)  %>% mutate(newcases = cases-lag(cases))  %>%
+  ungroup() %>%
+  mutate(percapita = newcases/POP_ESTIMATE_2019) %>%
+  filter(date == max(date)) %>%
+arrange(-percapita) %>%
+  slice(1:5)
+```
+## Cases per 100,00
+```{r}
+library(tidyverse)
+library(dplyr)
+state.interest = "California"
+per100000 =
+CovidPop %>% filter (state == state.interest) %>%
+  group_by(county) %>%
+mutate(last14 = cases-lag(cases,14, order_by = date)) %>%
+  ungroup() %>%
+mutate(per100thousand = cases/100,000) %>%
+filter(date == max(date))
+```
+## Total Cases
+```{r}
+library(tidyverse)
+library(dplyr)
+state.interest = "California"
+covid %>% filter (state == state.interest) %>%
+  filter(date == max(date)) %>%
+  summarise(totalcases= sum(cases))
+```
+
+## Total New Cases
+```{r}
+library(tidyverse)
+library(dplyr)
+state.interest = "California"
+covid %>% filter (state == state.interest) %>%
+group_by(county)  %>% mutate(newcases = cases-lag(cases))  %>%
+ungroup() %>%
+  filter(date == max(date)) %>%
+  summarise(totalnewcases= sum(newcases))
+```
+
+## Total Number of Safe Counties
+```{r}
+library(tidyverse)
+library(dplyr)
+state.interest = "California"
+per100000 %>% filter (state == state.interest) %>%
+filter(per100thousand <= 100)
+```
+
+## Question 1. Answers = As of 7/12/21 there is a total of 3,839,640	cases of Covid in California with 4131 new cases of Covid, and 24 remaining safe counties. 
+
+# Question 2: 
+```{r}
+library(tidyverse)
+library(dplyr)
+library(zoo)
+CovidPop %>% filter (state %in% c("Florida", "New York", "Louisiana", "California")) %>% 
+filter(date >= max(date) - 14) %>%
+    group_by(state, date) %>% 
+  summarise(cases = sum(cases)) %>%
+  mutate(newcases = cases-lag(cases),
+roll7 = rollmean(newcases, 7, fill = NA, align="right")) %>%
+ungroup() %>%
+select(date, state, cases, newcases, roll7) %>%
+filter(date == max(date)) %>%
+
+ ggplot(aes(x = state)) +
+  geom_col(aes(y = newcases), col = NA, fill = "#F5B8B5") +
+  geom_line(aes(y = roll7), col = "darkred", size = 1) 
+
+
+ 
+```
