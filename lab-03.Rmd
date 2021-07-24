@@ -1,0 +1,150 @@
+---
+title: "Geography 13"
+author: "[Xochitl Medina](https://xochitlmedina.github.io)"
+subtitle: 'Lab 03: Distances and the Border Zone'
+output:
+  html_document:
+    theme: journal
+---
+```{r}
+
+# Packages to Download
+remotes::install_github("ropensci/USAboundaries")
+remotes::install_github("ropensci/USAboundariesData")
+remotes::install_github("ropenscilabs/rnaturalearthdata")
+remotes::install_github("yutannihilation/gghighlight")
+```
+
+```{r}
+# Library
+
+# SPDS
+library(tidyverse)
+library(sf)
+library(units)
+
+# Data
+library(USAboundaries)
+library(rnaturalearthdata)
+
+# Visualization
+library(gghighlight)
+library(ggrepel)
+library(knitr)
+
+```
+
+```{r}
+# Question 1
+
+conus = USAboundaries::us_states(resolution = "low") %>%
+ filter(!state_name %in% c("Hawaii", "Alaska", "Puerto Rico" ))
+
+eqdc = '+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs'
+conuseqdc = st_transform(conus, eqdc)
+
+
+boundaries = rnaturalearthdata::countries110 %>%
+  st_as_sf(boundaries) %>%
+  filter(sovereignt %in% c( "Mexico", "United States of America", "Canada" ))
+
+boundaries_eqdc = st_transform(boundaries, eqdc)
+st_crs(boundaries_eqdc)$datum
+
+us_cities = read_csv('simplemaps_uscities_basicv1.73/uscities.csv') 
+ us_cities_sf = us_cities %>%
+   st_as_sf(coords = c("lng", "lat"), crs = 4326) %>%
+  filter(!state_name %in% c("Hawaii", "Alaska", "Puerto Rico" )) %>%
+     st_transform(eqdc)
+
+
+
+```
+```{r}
+# Question 2
+
+## 2.1
+
+conus_unionized = st_union(conuseqdc) %>%
+  st_cast( "MULTILINESTRING") 
+
+st_crs(conus_unionized)$datum
+st_crs(us_cities_sf)$datum
+
+us_cities_distance = us_cities_sf %>%
+filter(!state_name %in% c("Hawaii", "Alaska", "Puerto Rico" ))
+
+st_crs(us_cities_distance)$datum
+
+us_cities_distance = us_cities_sf %>%
+ mutate(us_cities_distance, dist_to_border = st_distance(us_cities_sf, conus_unionized),
+         dist_to_border = units::set_units(dist_to_border, "km"), 
+         dist_to_border = units::drop_units(dist_to_border)) 
+
+five_us_cities = us_cities_distance %>%
+  slice_max(dist_to_border, n = 5) %>%
+  st_drop_geometry() %>%
+  select(city, state = state_name, distance = dist_to_border) 
+
+knitr::kable(five_us_cities, caption = "Five Farthest Cities from US Border",
+             col.names = c("City",
+                           "State",
+                           "Distance from Border in km"))
+```
+
+``` {r}
+
+## 2.2
+  
+conus_combined = st_combine(conuseqdc) %>% 
+  st_cast("MULTILINESTRING")
+
+us_cities_distance_states = us_cities_sf %>%
+filter(!state_name %in% c("Hawaii", "Alaska", "Puerto Rico" ))
+
+us_cities_dist_states = us_cities_sf %>%
+ mutate(us_cities_distance_states, states_dist_to_border = st_distance(us_cities_sf, conus_combined),
+         states_dist_to_border = units::set_units(states_dist_to_border, "km"), 
+         states_dist_to_border = units::drop_units(states_dist_to_border)) 
+
+five_us_states = us_cities_dist_states %>% 
+  select(city, state_name, states_dist_to_border) %>% 
+  slice_max(states_dist_to_border, n = 5) %>% 
+  st_drop_geometry()
+
+knitr::kable(five_us_states, caption = "Five Farthest Cities from its State Border",
+             col.names = c("City",
+                           "State",
+                           "Distance from State Border in km"))
+```
+
+``` {r}
+
+## 2.3
+
+mexico = boundaries_eqdc %>% 
+  filter(sovereignt %in% c("Mexico")) %>% 
+  st_cast("MULTILINESTRING")
+
+us_cities_dist_mx = us_cities_sf
+filter(!state_name %in% c("Hawaii", "Alaska", "Puerto Rico" ))
+
+us_cities_dist_mx = us_cities_sf %>%
+  mutate(us_cities_distance_mx, states_dist_to_mexico = st_distance(us_cities_sf,mexico),
+         states_dist_to_mexico = units::set_units(states_dist_to_mexico, "km"), 
+         states_dist_to_mexico = units::drop_units(states_dist_to_mexico)) 
+
+  
+
+five_cities_mexico = us_cities_dist_mx %>% 
+  select(city, state_name, states_dist_to_mexico) %>% 
+  slice_max(states_dist_to_mexico, n = 5) %>% 
+  st_drop_geometry()
+  
+knitr::kable(five_cities_mexico, caption = "Five Farthest Cties from Mexico Border",
+             col.names = c("City",
+                           "State",
+                           "Distance from Mexico Border in km"))
+
+  
+```
