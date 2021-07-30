@@ -117,8 +117,7 @@ knitr::kable(five_us_states, caption = "Five Farthest Cities from its State Bord
                            "State",
                            "Distance from State Border in km"))
 ```
-
-``` {r}
+```{r}
 
 ## 2.3
 
@@ -126,17 +125,17 @@ mexico = boundaries_eqdc %>%
   filter(sovereignt %in% c("Mexico")) %>% 
   st_cast("MULTILINESTRING")
 
-us_cities_dist_mx = us_cities_sf
+us_cities_distance_mx = us_cities_sf %>%
 filter(!state_name %in% c("Hawaii", "Alaska", "Puerto Rico" ))
 
-us_cities_dist_mx = us_cities_sf %>%
+us_cities_distance_mx = us_cities_sf %>%
   mutate(us_cities_distance_mx, states_dist_to_mexico = st_distance(us_cities_sf,mexico),
          states_dist_to_mexico = units::set_units(states_dist_to_mexico, "km"), 
          states_dist_to_mexico = units::drop_units(states_dist_to_mexico)) 
 
   
 
-five_cities_mexico = us_cities_dist_mx %>% 
+five_cities_mexico = us_cities_distance_mx %>% 
   select(city, state_name, states_dist_to_mexico) %>% 
   slice_max(states_dist_to_mexico, n = 5) %>% 
   st_drop_geometry()
@@ -144,7 +143,78 @@ five_cities_mexico = us_cities_dist_mx %>%
 knitr::kable(five_cities_mexico, caption = "Five Farthest Cties from Mexico Border",
              col.names = c("City",
                            "State",
-                           "Distance from Mexico Border in km"))
+                           "Distance from Mexico Border in Km"))
+```
+
+``` {r}
+
+## 2.3
+
+canada = boundaries_eqdc %>% 
+  filter(sovereignt %in% c("Canada")) %>% 
+  st_cast("MULTILINESTRING")
+
+us_cities_distance_ca = us_cities_sf %>%
+filter(!state_name %in% c("Hawaii", "Alaska", "Puerto Rico" ))
+
+us_cities_distance_ca = us_cities_sf %>%
+  mutate(us_cities_distance_ca, states_dist_to_canada = st_distance(us_cities_sf, canada),
+         states_dist_to_canada = units::set_units(states_dist_to_canada, "km"), 
+         states_dist_to_canada = units::drop_units(states_dist_to_canada)) 
 
   
+
+five_cities_canada = us_cities_distance_ca %>% 
+  select(city, state_name, states_dist_to_canada) %>% 
+  slice_max(states_dist_to_canada, n = 5) %>% 
+  st_drop_geometry()
+  
+knitr::kable(five_cities_canada, caption = "Five Farthest Cties from Canda Border",
+             col.names = c("City",
+                           "State",
+                           "Distance from Canada Border in Km"))
+
+  
+```
+```{r}
+# Question 3
+
+## 3.1
+
+top_pop_cities = us_cities_sf %>%
+  filter(!state_name %in% c("Hawaii", "Alaska", "Puerto Rico" )) %>%
+  slice_max(population, n = 10)
+
+ggplot() +
+  geom_sf(data = boundaries_eqdc, color = "gray") +
+  geom_sf(data = conuseqdc, color = "navy", lty = 3) +
+  geom_sf(data = top_pop_cities, color = "green") +
+  ggrepel::geom_label_repel(data = top_pop_cities,
+                            aes(label = city, geometry = geometry),
+                            stat = "sf_coordinates",
+                            size = 3) +
+  labs(title = "Top 10 Most Populous Cities in the United States") + 
+  ggthemes::theme_map() 
+ 
+```
+``` {r}
+## 3.3
+distance_from_border = us_cities_dist_states %>%
+  slice_max(states_dist_to_border, n = 5)
+
+
+ggplot() +
+  geom_sf(data = boundaries_eqdc, color = "gray") +
+  geom_sf(data = conuseqdc, color = "navy", lty = 3) +
+  geom_sf(data = us_cities_dist_states, aes(color = as.numeric(states_dist_to_border)), size = 0.1) +
+  scale_color_gradient(low = "yellow", high = "red") +
+  geom_sf(data = distance_from_border, color = "green") +
+  ggrepel::geom_label_repel(data = distance_from_border,
+                            aes(label = city, geometry = geometry),
+                            stat = "sf_coordinates",
+                            size = 3) +
+  labs(title = "Top 5 Farthest Cities From the Border", color = "Distance (Km)") + 
+  ggthemes::theme_map() 
+
+
 ```

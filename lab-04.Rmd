@@ -1,0 +1,128 @@
+``` {r}
+remotes::install_github("ropensci/USAboundaries")
+remotes::install_github("ropensci/USAboundariesData")
+remotes::install_github("ateucher/rmapshaper")
+library(tidyverse)
+library(sf)
+library(units)
+library(gghighlight)
+library(ggrepel)
+library(knitr)
+library(rmapshaper)
+library(readxl)
+
+```
+
+# 1.1 
+```{r}
+
+counties <- USAboundaries::us_counties() %>%
+filter(!state_name %in% c("Hawaii", "Alaska", "Puerto Rico" )) %>%
+st_transform(crs = 5070) %>%
+st_as_sf()
+
+```
+
+# 1.2
+```{r}
+
+centroids <- counties %>%
+st_centroid()
+nrow(centroids)
+
+centroids_unionized <- centroids %>%
+  st_union()
+centroids_unionized
+
+boundary <- counties %>%
+  st_union() %>%
+  ms_simplify(keep = .025)
+```
+
+#1.3 - 1.6
+```{r}
+
+voronois <- st_voronoi(centroids_unionized) %>%
+  st_cast() %>%
+  st_as_sf %>%
+  mutate(id = 1:n()) %>%
+  st_intersection(boundary)
+
+triangle <- st_triangulate(centroids_unionized) %>%
+  st_cast() %>%
+  st_as_sf %>%
+  mutate(id = 1:n()) %>%
+  st_intersection(boundary)
+
+grid <- st_make_grid(centroids_unionized, n = 70) %>%
+  st_cast() %>%
+  st_as_sf %>%
+  mutate(id = 1:n()) %>%
+  st_intersection(boundary)
+
+hex_grid <- st_make_grid(centroids_unionized, n = 70, square = FALSE) %>%
+  st_cast() %>%
+  st_as_sf %>%
+  mutate(id = 1:n()) %>%
+  st_intersection(boundary)
+
+
+plot(voronois) 
+plot(triangle)
+plot(grid)
+plot(hex_grid)
+```
+
+```{r}
+ tesselation_calculation = function(data, title){
+  
+  data = data %>%
+  mutate(area = st_area(data),
+         area = units::set_units(area, "km^2"),
+         area = units::drop_units(area),
+         total_area = sum(area),
+         mean_area = total_area / n(),
+         sd_area = sum(area - mean_area /n()) ^ (1/2),
+         number = length(data$id)
+         ) 
+  number_tiles = length(data$id)
+  
+  title = data %>%
+    mutate(number = number_tiles, name = title) %>%
+    select(name, number, mean_area, sd_area, total_area) %>%
+    st_drop_geometry() %>%
+    head(1)
+  
+}
+original = counties %>%
+  mutate(id = 1:n())
+tesselation_calculation(voronois, "Voronoi")
+tesselation_calculation(triangle, "Triangle")
+tesselation_calculation(grid, "Grid")
+tesselation_calculation(hex_grid, "Hexegonal Grid")
+tesselation_calculation(original, "Original")
+
+tess_summary = bind_rows(tesselation_calculation(voronois, "Voronoi"), tesselation_calculation(triangle, "Triangulation"), tesselation_calculation(grid, "Grid"),
+tesselation_calculation(hex_grid, "Hexagon"),tesselation_calculation(original, "Original"))
+knitr::kable(tess_summary,
+             caption = "Summary of Tessellations",
+             col.names = c("Tessellation Type", "Number of Tiles", "Mean Area", "Standard Deviation", "Total Area"))
+
+```
+```{r}
+
+NID = read_excel("../geog-13-labs/NID2019_U.xlsx") %>% 
+  filter(!is.na(LONGITUDE)) %>% 
+  filter(!is.na(LATITUDE)) %>% 
+  st_as_sf(coords= c("LONGITUDE", "LATITUDE"), crs= 4326) %>% 
+  st_transform(5070)
+  
+PIP = function(points, polygons, ID){
+  st_join(polygons, points) %>% 
+     st_drop_geometry() %>%
+   dplyr::count(.data[['ID']])
+  st_as_sf()
+  }
+
+
+```
