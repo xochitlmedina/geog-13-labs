@@ -1,6 +1,6 @@
 ---
 title: "Geography 13"
-author: "[Xochitl Medina](https://xochitlmedina.github.io)"
+author: "[Xochitl Medina](https://xochitlmedina.github.io/xochitlmedina/index.html)"
 subtitle: 'Lab 03: Distances and the Border Zone'
 output:
   html_document:

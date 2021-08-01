@@ -1,6 +1,6 @@
 ---
 title: "Geography 13"
-author: "[Xochitl Medina](https://xochitlmedina.github.io)"
+author: "[Xochitl Medina](https://xochitlmedina.github.io/xochitlmedina/index.html)"
 subtitle: 'Lab 02: COVID-19 Pandemic'
 output:
   html_document:

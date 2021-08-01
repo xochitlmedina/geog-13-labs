@@ -1,3 +1,11 @@
+---
+title: "Geography 13"
+author: "[Xochitl Medina](https://xochitlmedina.github.io/xochitlmedina/index.html)"
+subtitle: 'Lab 04: Tessellations'
+output:
+  html_document:
+    theme: journal
+---
 ``` {r}
 remotes::install_github("ropensci/USAboundaries")
 remotes::install_github("ropensci/USAboundariesData")
